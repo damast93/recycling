@@ -25,7 +25,7 @@ def incinerator(cap):
     def processing(u):
         (p,g,b,l) = u
         return (0.0,
-                g,
+                0.0,
                 0.0,
                 0.1*p + 0.05*b)
         
@@ -33,7 +33,7 @@ def incinerator(cap):
         (p,g,b,l) = u
         return -1.0*p - 0.5*b 
     
-    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs }
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'illegal' : 'gl' }
 
 fs = { 'F1' : incinerator(50) }
 
@@ -121,3 +121,58 @@ LP += Z
 
 # ---------- Constraints ----------
 
+# Mass-balance constraints
+for t in ts:
+
+    # At waste sources
+    for w in ws.keys():
+        LP += sum(( q[(w,s,t)] for s in ss.keys() )) + sum(( q[(w,l,t)] for l in ls.keys() )) == ws[w]['quantity']
+
+    # At sorting facilities
+    for s in ss.keys():
+        for m in ms:
+            LP += sum(( q[(w,s,t)]*ws[w][m] for w in ws.keys() )) == sum(( u[(s,f,m,t)] for f in fs.keys() )) + \
+                                                                     sum(( u[(s,l,m,t)] for l in ls.keys() ))
+
+    # At facilities
+    for f in fs.keys():
+        def inflow(m):
+            return sum(( u[(s,f,m,t)] for s in ss.keys() )) + sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f ))
+        def outflow(m):
+            return sum(( u[(f,l,m,t)] for l in ls.keys() )) + sum(( u[(f,f2,m,t)] for f2 in fs.keys() if f2 != f ))
+        
+        (outp,outg,outb,outl) = fs[f]['processing']((inflow('p'), inflow('g'), inflow('b'), inflow('l')))
+        LP += outp == outflow('p')
+        LP += outg == outflow('g')
+        LP += outb == outflow('b')
+        LP += outl == outflow('l')
+            
+# Capacity constriants
+for t in ts:
+
+    # At sorting facilities
+    for s in ss.keys():
+        LP += sum(( q[(w,s,t)] for w in ws.keys() )) <= ss[s]['capacity']
+
+    # At facilities
+    for f in fs.keys():
+        LP += sum(( u[(s,f,m,t)] for s in ss.keys() for m in ms )) + \
+              sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f for m in ms )) <= fs[f]['capacity']
+
+# At landfills
+for l in ls.keys():
+    accum = sum(( q[(w,l,t)] for w in ws.keys() for t in ts )) + \
+            sum(( u[(s,l,m,t)] for s in ss.keys() for m in ms for t in ts )) + \
+            sum(( u[(f,l,m,t)] for f in fs.keys() for m in ms for t in ts ))
+    LP += accum <= ls[l]['total']
+    
+        
+# Don't send illegal stuff to facilities
+LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys() for m in fs[f]['illegal'] )) == 0.0
+LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f for m in fs[f]['illegal'] )) == 0.0
+          
+# Unsorted parts from sorting facilities may not go anywhere but to landfills
+LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys() for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0
+
+# Note that even though unsorted waste gets deposited on landfills in a distinguished manner,
+# we don't care as it doesn't make any difference
