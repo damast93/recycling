@@ -11,11 +11,11 @@ def wastesource(quantity, p, g, b, l):
 ws = { 'W1' : wastesource(100, 0.5, 0.3, 0.2, 0.0) }
 
 # ---------- Sorting facilities ---------- 
-# Create sorting facility with given capacity, extracting given materials
-def sorting(cap, materials):
-    return { 'capacity' : cap, 'materials' : materials }
+# Create sorting facility with given capacity, processing costs, extracting given materials
+def sorting(cap, costs, materials): 
+    return { 'capacity' : cap, 'costs': costs, 'materials' : materials }
 
-ss = { 'S1' : sorting(80, 'pg') }
+ss = { 'S1' : sorting(80, 1, 'pg') }
 
 # ---------- Facilities ---------- 
 # A facility comes with given capacities, processing and cost functions (linear!)
@@ -38,11 +38,11 @@ def incinerator(cap):
 fs = { 'F1' : incinerator(50) }
 
 # ---------- Landfills ----------
-# Create landfill with given total capacity
-def landfill(total):
-    return { 'total' : total }
+# Create landfill with given total capacity and depositing costs
+def landfill(total, costs):
+    return { 'total' : total, 'costs' : costs }
 
-ls = { 'L1' : landfill(1000) }
+ls = { 'L1' : landfill(1000, 3) }
 
 # ---------- Time ---------- 
 ts = [ 0, 1 ]
@@ -50,10 +50,10 @@ ts = [ 0, 1 ]
 # ---------- The constants ----------
 # ---------- Transportation costs ----------
 def cq(w,sl,t):
-    return 1
+    return 1.0
 
 def cu(sf,fl,m,t):
-    return 2
+    return 2.0
 
 
 # ---------- The LP ---------- 
@@ -76,10 +76,10 @@ u = LpVariable.dicts('u', upaths, 0)
 LP = LpProblem("Recycling", LpMinimize)
 
 # Transportation costs
-c = sum(( cq(*qpath)*q[qpath] for qpath in qpaths )) + sum(( cu(*upath)*u[upath] for upath in upaths ))
+transportationCosts = sum(( cq(*qpath)*q[qpath] for qpath in qpaths )) + sum(( cu(*upath)*u[upath] for upath in upaths ))
 
 # Facility costs and revenues
-# Costs for facilities
+# Generate costs at facilities
 def facilityCosts():
     for t in ts:
         for f in fs.keys():
@@ -92,10 +92,32 @@ def facilityCosts():
                     uvec = (u[(f2,f,'p',t)], u[(f2,f,'g',t)], u[(f2,f,'b',t)], u[(f2,f,'l',t)])
                     yield fs[f]['costs'](uvec)
 
-# Costs at sorting facilities
+# Generate costs at sorting facilities
 def sortingCosts():
     for t in ts:
         for s in ss.keys():
             for w in ws.keys():
+                yield ss[s]['costs'] * q[(w,s,t)]
 
+# Generate costs at landfills
+def landfillCosts():
+    for t in ts:
+        for l in ls.keys():
+            for w in ws.keys():
+                yield ls[l]['costs'] * q[(w,l,t)]
+
+            for s in ss.keys():
+                yield ls[l]['costs'] * sum(( u[(s,l,m,t)] for m in ms ))
+
+            for f in fs.keys():
+                yield ls[l]['costs'] * sum(( u[(f,l,m,t)] for m in ms ))
+
+Z = transportationCosts  + \
+    sum(facilityCosts()) + \
+    sum(sortingCosts())  + \
+    sum(landfillCosts())
+
+LP += Z
+
+# ---------- Constraints ----------
 
