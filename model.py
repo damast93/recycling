@@ -45,11 +45,11 @@ fs = { 'F1' : incinerator(200) }
 def landfill(total, costs):
     return { 'total' : total, 'costs' : costs }
 
-ls = { 'L1' : landfill(1000, 3),
-       'L2' : landfill(1000, 2.5)}
+ls = { 'L1' : landfill(200, 3),
+       'L2' : landfill(2000, 2.5)}
 
 # ---------- Time ---------- 
-ts = [ 0 ]
+ts = [ 0, 1, 2, 3, 4, 5 ]
 
 # ---------- The constants ----------
 # ---------- Transportation costs ----------
@@ -183,7 +183,8 @@ LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys() for 
 LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f for m in fs[f]['illegal'] )) == 0.0
           
 # Unsorted parts from sorting facilities may not go anywhere but to landfills
-LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys() for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0
+LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys()
+            for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0
 
 # Note that even though unsorted waste gets deposited on landfills in a distinguished manner,
 # we don't care as it doesn't make any difference
