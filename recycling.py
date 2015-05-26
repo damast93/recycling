@@ -40,6 +40,8 @@ def dist(a,b):
 # Transportation cost/unit
 transportCosts = 0.25
 argmin = -1000.0
+
+# revenues['st'] = revenue of processing a unit of type 's' at facility 't'
 revenues = { 'rr' : 5.0,    'ri' : 1.5,    'rc' : argmin, 'rl' : 0.0,
              'ir' : argmin, 'ii' : 2.0,    'ic' : argmin, 'il' : 0.0,
              'cr' : argmin, 'ci' : argmin, 'cc' : 1.0,    'cl' : 0.0,
@@ -105,8 +107,10 @@ for eq in capacityConstraints():
 LP.writeLP("recycling.lp")
 status = LP.solve()
 
-print(value(LP.objective))
+print("Status: %s" % LpStatus[status])
+print("Optimale Kosten: %f" % value(LP.objective))
 for v in LP.variables():
-    print("%s = %f" % (v.name, value(v)))
+    if(value(v) > 0.0):
+        print("%s = %f" % (v.name, value(v)))
 
 
