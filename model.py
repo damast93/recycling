@@ -1,4 +1,5 @@
 from pulp import *
+from math import sqrt
 
 # Material types
 ms = 'pgbl'
@@ -8,14 +9,16 @@ ms = 'pgbl'
 def wastesource(quantity, p, g, b, l):
     return { 'quantity': quantity, 'p' : p, 'g' : g, 'b' : b, 'l' : l }
 
-ws = { 'W1' : wastesource(100, 0.5, 0.3, 0.2, 0.0) }
+ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
+       'W2' : wastesource(100, 0.0, 0.0, 0.5, 0.5) }
 
 # ---------- Sorting facilities ---------- 
 # Create sorting facility with given capacity, processing costs, extracting given materials
 def sorting(cap, costs, materials): 
     return { 'capacity' : cap, 'costs': costs, 'materials' : materials }
 
-ss = { 'S1' : sorting(80, 1, 'pg') }
+ss = { 'S1' : sorting(100, 1, 'pg'),
+       'S2' : sorting(300, 2, 'pgb') }
 
 # ---------- Facilities ---------- 
 # A facility comes with given capacities, processing and cost functions (linear!)
@@ -35,25 +38,33 @@ def incinerator(cap):
     
     return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'illegal' : 'gl' }
 
-fs = { 'F1' : incinerator(50) }
+fs = { 'F1' : incinerator(200) }
 
 # ---------- Landfills ----------
 # Create landfill with given total capacity and depositing costs
 def landfill(total, costs):
     return { 'total' : total, 'costs' : costs }
 
-ls = { 'L1' : landfill(1000, 3) }
+ls = { 'L1' : landfill(1000, 3),
+       'L2' : landfill(1000, 2.5)}
 
 # ---------- Time ---------- 
-ts = [ 0, 1 ]
+ts = [ 0 ]
 
 # ---------- The constants ----------
 # ---------- Transportation costs ----------
+
+# Ad-hoc euclidean distance
+pos = { 'W1' : (0.0, 0.0), 'W2' : (250.0, 200.0) ,
+        'S1' : (50, 100), 'S2' : (100,10) ,
+        'F1' : (100, 80),
+        'L1' : (200,50), 'L2' : (250,50) }
+
 def cq(w,sl,t):
-    return 1.0
+    return 0.005*sqrt((pos[w][0]-pos[sl][0])**2.0 + (pos[w][1]-pos[sl][1])**2.0)
 
 def cu(sf,fl,m,t):
-    return 2.0
+    return 0.005*sqrt((pos[sf][0]-pos[fl][0])**2.0 + (pos[sf][1]-pos[fl][1])**2.0)
 
 
 # ---------- The LP ---------- 
@@ -176,3 +187,15 @@ LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys() for t in ts for m
 
 # Note that even though unsorted waste gets deposited on landfills in a distinguished manner,
 # we don't care as it doesn't make any difference
+
+# ---------------- Solve ----------------
+
+LP.writeLP("recycling.lp")
+status = LP.solve()
+
+print("Status: %s" % LpStatus[status])
+print("Optimale Kosten: %f" % value(LP.objective))
+for v in LP.variables():
+    if(value(v) > 0.0):
+        print("%s = %f" % (v.name, value(v)))
+
