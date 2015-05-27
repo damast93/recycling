@@ -1,5 +1,4 @@
 # ToDo
 
-* Add graphics support
-* Dual variables (named equations?)
 * Expressive demo
+* Write actual readme (installation of pulp)

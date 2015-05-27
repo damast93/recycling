@@ -5,7 +5,7 @@ from recyclingModel import *
 from math import sqrt
 
 # Time
-ts = [ 1 ]
+ts = [ 0 ]
 
 # Waste sources
 ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
@@ -26,7 +26,7 @@ ls = { 'L1' : landfill(200, 30),
 # ---------- Distance and cost functions ----------
 
 # Ad-hoc euclidean distance
-pos = { 'W1' : (0.0, 0.0), 'W2' : (250.0, 200.0) ,
+pos = { 'W1' : (20.0, 20.0), 'W2' : (250.0, 200.0) ,
         'S1' : (50, 100), 'S2' : (100,10) ,
         'F1' : (100, 80),
         'L1' : (200,50), 'L2' : (250,50) }

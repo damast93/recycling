@@ -2,6 +2,7 @@
 
 from pulp import *
 from model1 import *
+from svg import *
 
 # ---------- The LP ---------- 
 # ---------- Variables ---------- 
@@ -141,16 +142,43 @@ LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys()
 
 # ---------------- Solve ----------------
 
-LP.writeLP("recycling.lp")
-status = LP.solve()
+t = 0
 
-print("Status: %s" % LpStatus[status])
-print("Optimal costs: %f" % value(LP.objective))
-for v in LP.variables():
-    if(value(v) > 0.0):
-        print("%s = %f" % (v.name, value(v)))
+svg = SVG("model.svg")
+
+for w in ws:
+    (x,y) = pos[w]
+    svg.circle(x,y,10,'black')
+    
+for s in ss:
+    (x,y) = pos[s]
+    svg.circle(x,y,10,'green')
+    
+for f in fs:
+    (x,y) = pos[f]
+    svg.circle(x,y,10,'red')
+    
+for l in ls:
+    (x,y) = pos[l]
+    svg.circle(x,y,10,'navy')
+
+for w in ws:
+    for 
+    
+
+svg.close()
+
+if 0:
+    LP.writeLP("recycling.lp")
+    status = LP.solve()
+
+    print("Status: %s" % LpStatus[status])
+    print("Optimal costs: %f" % value(LP.objective))
+    for v in LP.variables():
+        if(value(v) > 0.0):
+            print("%s = %f" % (v.name, value(v)))
 
 
-# Dual variables
-for c in LP.constraints.keys():
-    print("%s = %f" % (c, LP.constraints[c].pi))
+    # Dual variables
+    for c in LP.constraints.keys():
+        print("%s = %f" % (c, LP.constraints[c].pi))
