@@ -5,21 +5,21 @@ from recyclingModel import *
 from math import sqrt
 
 # Time
-ts = [ 0 ]
+ts = [ 0, 1, 2, 3, 4, 5 ]
 
 # Waste sources
 ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
        'W2' : wastesource(100, 0.0, 0.0, 0.5, 0.5) }
 
 # Sorting facilities
-ss = { 'S1' : sorting(100, 1, 'pg'),
+ss = { 'S1' : sorting(200, 1, 'pg'),
        'S2' : sorting(100, 2, 'pgb') }
 
 # Facilities
-fs = { 'F1' : incinerator(170) }
+fs = { 'F1' : incinerator(200) }
 
 # Landfills
-ls = { 'L1' : landfill(200, 10),
+ls = { 'L1' : landfill(300, 10),
        'L2' : landfill(2000, 25)}
 
 
