@@ -23,7 +23,8 @@ u = LpVariable.dicts('u', upaths, 0)
 LP = LpProblem("Recycling", LpMinimize)
 
 # Transportation costs
-transportationCosts = sum(( cq(*qpath)*q[qpath] for qpath in qpaths )) + sum(( cu(*upath)*u[upath] for upath in upaths ))
+transportationCosts = sum(( cq(*qpath)*q[qpath] for qpath in qpaths )) + \
+                      sum(( cu(*upath)*u[upath] for upath in upaths ))
 
 # Facility costs and revenues
 # Generate costs at facilities
@@ -71,29 +72,32 @@ LP += Z
 # Mass-balance constraints
 for t in ts:
 
-    # At waste sources
+    # At waste sources:
+    # All waste has to go to either sorting or landfills
     for w in ws.keys():
         LP += sum(( q[(w,s,t)] for s in ss.keys() )) + sum(( q[(w,l,t)] for l in ls.keys() )) == ws[w]['quantity']
 
-    # At sorting facilities
+    # At sorting facilities:
+    # The estimated inflow of each material has to be disposed of at landfills or facilities
     for s in ss.keys():
         for m in ms:
             LP += sum(( q[(w,s,t)]*ws[w][m] for w in ws.keys() )) == sum(( u[(s,f,m,t)] for f in fs.keys() )) + \
                                                                      sum(( u[(s,l,m,t)] for l in ls.keys() ))
 
-    # At facilities
+    # At facilities:
+    # Residues of processing waste have to be disposed of
     for f in fs.keys():
         def inflow(m):
             return sum(( u[(s,f,m,t)] for s in ss.keys() )) + sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f ))
         def outflow(m):
             return sum(( u[(f,l,m,t)] for l in ls.keys() )) + sum(( u[(f,f2,m,t)] for f2 in fs.keys() if f2 != f ))
 
-        uinflow    = { m : inflow(m) for m in ms }
-        uprocessed = fs[f]['processing'](uinflow)
+        uinflow   = { m : inflow(m) for m in ms }
+        uresidues = fs[f]['processing'](uinflow)
         for m in ms:
-            LP += uprocessed[m] == outflow(m)
+            LP += uresidues[m] == outflow(m)
             
-# Capacity constriants
+# Capacity constriants (in each time step)
 for t in ts:
 
     # At sorting facilities
@@ -105,9 +109,9 @@ for t in ts:
         LP += sum(( u[(s,f,m,t)] for s in ss.keys() for m in ms )) + \
               sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f for m in ms )) <= fs[f]['capacity']
 
-# At landfills
+# At landfills (accumulating over time)
 for l in ls.keys():
-    accum = sum(( q[(w,l,t)] for w in ws.keys() for t in ts )) + \
+    accum = sum(( q[(w,l,t)]   for w in ws.keys() for t in ts )) + \
             sum(( u[(s,l,m,t)] for s in ss.keys() for m in ms for t in ts )) + \
             sum(( u[(f,l,m,t)] for f in fs.keys() for m in ms for t in ts ))
     LP += accum <= ls[l]['total']

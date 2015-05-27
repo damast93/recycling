@@ -4,6 +4,9 @@ from recyclingModel import *
 
 from math import sqrt
 
+# Time
+ts = [ 0, 1, 2 ]
+
 # Waste sources
 ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
        'W2' : wastesource(100, 0.0, 0.0, 0.5, 0.5) }
@@ -19,8 +22,6 @@ fs = { 'F1' : incinerator(200) }
 ls = { 'L1' : landfill(200, 30),
        'L2' : landfill(2000, 25)}
 
-# Time
-ts = [ 1 ]
 
 # ---------- Distance and cost functions ----------
 
