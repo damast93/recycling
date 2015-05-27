@@ -75,14 +75,16 @@ for t in ts:
     # At waste sources:
     # All waste has to go to either sorting or landfills
     for w in ws.keys():
-        LP += sum(( q[(w,s,t)] for s in ss.keys() )) + sum(( q[(w,l,t)] for l in ls.keys() )) == ws[w]['quantity']
+        LP += sum(( q[(w,s,t)] for s in ss.keys() )) + sum(( q[(w,l,t)] for l in ls.keys() )) == ws[w]['quantity'], \
+              "Mass" + w + "," + str(t)
 
     # At sorting facilities:
     # The estimated inflow of each material has to be disposed of at landfills or facilities
     for s in ss.keys():
         for m in ms:
             LP += sum(( q[(w,s,t)]*ws[w][m] for w in ws.keys() )) == sum(( u[(s,f,m,t)] for f in fs.keys() )) + \
-                                                                     sum(( u[(s,l,m,t)] for l in ls.keys() ))
+                                                                     sum(( u[(s,l,m,t)] for l in ls.keys() )), \
+                  "Mass" + s + m + "," + str(t)
 
     # At facilities:
     # Residues of processing waste have to be disposed of
@@ -95,37 +97,44 @@ for t in ts:
         uinflow   = { m : inflow(m) for m in ms }
         uresidues = fs[f]['processing'](uinflow)
         for m in ms:
-            LP += uresidues[m] == outflow(m)
+            LP += uresidues[m] == outflow(m), \
+                  "Mass" + f + m + "," + str(t)
             
 # Capacity constriants (in each time step)
 for t in ts:
 
     # At sorting facilities
     for s in ss.keys():
-        LP += sum(( q[(w,s,t)] for w in ws.keys() )) <= ss[s]['capacity']
+        LP += sum(( q[(w,s,t)] for w in ws.keys() )) <= ss[s]['capacity'], \
+              "Cap" + s + "," + str(t)
 
     # At facilities
     for f in fs.keys():
         LP += sum(( u[(s,f,m,t)] for s in ss.keys() for m in ms )) + \
-              sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f for m in ms )) <= fs[f]['capacity']
+              sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f for m in ms )) <= fs[f]['capacity'], \
+              "Cap" + f + "," + str(t)
 
 # At landfills (accumulating over time)
 for l in ls.keys():
     accum = sum(( q[(w,l,t)]   for w in ws.keys() for t in ts )) + \
             sum(( u[(s,l,m,t)] for s in ss.keys() for m in ms for t in ts )) + \
             sum(( u[(f,l,m,t)] for f in fs.keys() for m in ms for t in ts ))
-    LP += accum <= ls[l]['total']
+    LP += accum <= ls[l]['total'], \
+          "Total" + l
     
         
 # Don't send illegal stuff to facilities
 LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys()
-                          for m in ms if m not in fs[f]['legal'] )) == 0.0
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0, \
+      "IllegalS"
 LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f
-                          for m in ms if m not in fs[f]['legal'] )) == 0.0
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0, \
+      "IllegalF"
           
 # Unsorted parts from sorting facilities may not go anywhere but to landfills
 LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys()
-            for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0
+            for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0, \
+      "DisposeUnsorted"
 
 # Note that even though unsorted waste gets deposited on landfills in a distinguished manner,
 # we don't care as it doesn't make any difference
@@ -136,8 +145,12 @@ LP.writeLP("recycling.lp")
 status = LP.solve()
 
 print("Status: %s" % LpStatus[status])
-print("Optimale Kosten: %f" % value(LP.objective))
+print("Optimal costs: %f" % value(LP.objective))
 for v in LP.variables():
     if(value(v) > 0.0):
         print("%s = %f" % (v.name, value(v)))
 
+
+# Dual variables
+for c in LP.constraints.keys():
+    print("%s = %f" % (c, LP.constraints[c].pi))

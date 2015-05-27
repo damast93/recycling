@@ -5,7 +5,7 @@ from recyclingModel import *
 from math import sqrt
 
 # Time
-ts = [ 0, 1, 2 ]
+ts = [ 1 ]
 
 # Waste sources
 ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
@@ -16,7 +16,7 @@ ss = { 'S1' : sorting(100, 1, 'pg'),
        'S2' : sorting(300, 2, 'pgb') }
 
 # Facilities
-fs = { 'F1' : incinerator(200) }
+fs = { 'F1' : incinerator(210) }
 
 # Landfills
 ls = { 'L1' : landfill(200, 30),
