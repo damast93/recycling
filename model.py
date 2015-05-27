@@ -1,8 +1,11 @@
 from pulp import *
 from math import sqrt
 
-# Material types
+# ---------- Material types ---------- 
 ms = 'pgbl'
+
+# Sorted material flow is represented through named vectors
+u0 = { m : 0.0 for m in ms }
 
 # ---------- Waste sources ---------- 
 # Create waste source with given quantity and presumed composition of waste (p,g,b,l)
@@ -21,22 +24,23 @@ ss = { 'S1' : sorting(100, 1, 'pg'),
        'S2' : sorting(300, 2, 'pgb') }
 
 # ---------- Facilities ---------- 
-# A facility comes with given capacities, processing and cost functions (linear!)
+# A facility comes with fields
+# - capacity   : capacity limiting the total inflow per time step
+# - processing : a linear processing function on material flow vectors
+# - costs      : a linear processing cost/revenue function on material vectors
+# - legal      : legal materials which the facility accepts
 
 # Create an incinerator of given capacity
 def incinerator(cap):
     def processing(u):
-        (p,g,b,l) = u
-        return (0.0,
-                0.0,
-                0.0,
-                0.1*p + 0.05*b)
+        ret = u0
+        ret['l'] = 0.1*u['p'] + 0.05*u['b']
+        return ret
         
     def costs(u):
-        (p,g,b,l) = u
-        return -1.0*p - 0.5*b 
+        return -1.0*u['p'] - 0.5*u['b'] 
     
-    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'illegal' : 'gl' }
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'pb' }
 
 fs = { 'F1' : incinerator(200) }
 
@@ -45,11 +49,11 @@ fs = { 'F1' : incinerator(200) }
 def landfill(total, costs):
     return { 'total' : total, 'costs' : costs }
 
-ls = { 'L1' : landfill(200, 3),
-       'L2' : landfill(2000, 2.5)}
+ls = { 'L1' : landfill(200, 30),
+       'L2' : landfill(2000, 25)}
 
 # ---------- Time ---------- 
-ts = [ 0, 1, 2, 3, 4, 5 ]
+ts = [ 1 ]
 
 # ---------- The constants ----------
 # ---------- Transportation costs ----------
@@ -95,12 +99,12 @@ def facilityCosts():
     for t in ts:
         for f in fs.keys():
             for s in ss.keys():
-                uvec = (u[(s,f,'p',t)], u[(s,f,'g',t)], u[(s,f,'b',t)], u[(s,f,'l',t)])
+                uvec = { m : u[(s,f,m,t)] for m in ms }
                 yield fs[f]['costs'](uvec)
                 
             for f2 in fs.keys():
                 if f != f2:
-                    uvec = (u[(f2,f,'p',t)], u[(f2,f,'g',t)], u[(f2,f,'b',t)], u[(f2,f,'l',t)])
+                    uvec = { m : u[(f2,f,m,t)] for m in ms }
                     yield fs[f]['costs'](uvec)
 
 # Generate costs at sorting facilities
@@ -151,12 +155,11 @@ for t in ts:
             return sum(( u[(s,f,m,t)] for s in ss.keys() )) + sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f ))
         def outflow(m):
             return sum(( u[(f,l,m,t)] for l in ls.keys() )) + sum(( u[(f,f2,m,t)] for f2 in fs.keys() if f2 != f ))
-        
-        (outp,outg,outb,outl) = fs[f]['processing']((inflow('p'), inflow('g'), inflow('b'), inflow('l')))
-        LP += outp == outflow('p')
-        LP += outg == outflow('g')
-        LP += outb == outflow('b')
-        LP += outl == outflow('l')
+
+        uinflow    = { m : inflow(m) for m in ms }
+        uprocessed = fs[f]['processing'](uinflow)
+        for m in ms:
+            LP += uprocessed[m] == outflow(m)
             
 # Capacity constriants
 for t in ts:
@@ -179,8 +182,10 @@ for l in ls.keys():
     
         
 # Don't send illegal stuff to facilities
-LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys() for m in fs[f]['illegal'] )) == 0.0
-LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f for m in fs[f]['illegal'] )) == 0.0
+LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys()
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0
+LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0
           
 # Unsorted parts from sorting facilities may not go anywhere but to landfills
 LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys()
