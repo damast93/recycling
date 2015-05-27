@@ -155,59 +155,73 @@ col = { 'p' : 'yellow', 'g' : 'gray', 'b' : 'green', 'l' : 'navy' }
 
 svg = SVG("model.svg")
 
-for w in ws:
-    (x,y) = pos[w]
-    svg.circle(x,y,10,'white')
-    
-for s in ss:
-    (x,y) = pos[s]
-    svg.circle(x,y,10,'green')
-    
-for f in fs:
-    (x,y) = pos[f]
-    svg.circle(x,y,10,'red')
-    
-for l in ls:
-    (x,y) = pos[l]
-    svg.circle(x,y,10,'navy')
-
+totalquantity = sum(( ws[w]['quantity'] for w in ws ))
+sz = 3.0
+r = 10
 
 for w in ws:
     for s in ss:
-        if value(q[(w,s,t)]) > 0.0:
-            svg.dashline(pos[w][0], pos[w][1],pos[s][0],pos[s][1], 'black', 1)
+        d = value(q[(w,s,t)])/totalquantity
+        if d > 0.0:
+            svg.line(pos[w][0], pos[w][1],pos[s][0],pos[s][1], 'black', sz*d)
         
     for l in ls:
-        if value(q[(w,l,t)]) > 0.0:
-            svg.dashline(pos[w][0], pos[w][1],pos[l][0],pos[l][1], 'black', 1)
+        d = value(q[(w,l,t)])/totalquantity
+        if d > 0.0:
+            svg.line(pos[w][0], pos[w][1],pos[l][0],pos[l][1], 'black', sz*d)
     
-
 for s in ss:
     for f in fs:
         for m in ms:
-            um = value(u[(s,f,m,t)])
-            if um > 0.0:
-                svg.line(pos[s][0], pos[s][1], pos[f][0], pos[f][1], col[m], 1)
+            d = value(u[(s,f,m,t)])/totalquantity
+            if d > 0.0:
+                svg.line(pos[s][0], pos[s][1], pos[f][0], pos[f][1], col[m], sz*d)
+                
     for l in ls:
         for m in ms:
-            um = value(u[(s,l,m,t)])
-            if um > 0.0:
-                svg.line(pos[s][0], pos[s][1], pos[l][0], pos[l][1], col[m], 1)
+            d = value(u[(s,l,m,t)])/totalquantity
+            if d > 0.0:
+                svg.line(pos[s][0], pos[s][1], pos[l][0], pos[l][1], col[m], sz*d)
 
 for f in fs:
     for f2 in fs:
         if f2 != f:
             for m in ms:
-                um = value(u[(f,f2,m,t)])
-                if um > 0.0:
-                    svg.line(pos[f][0], pos[f][1], pos[f2][0], pos[f2][1], col[m], 1)
+                d = value(u[(f,f2,m,t)])/totalquantity
+                if d > 0.0:
+                    svg.line(pos[f][0], pos[f][1], pos[f2][0], pos[f2][1], col[m], sz*d)
 
     for l in ls:
         for m in ms:
-            um = value(u[(f,l,m,t)])
-            if um > 0.0:
-                svg.line(pos[f][0], pos[f][1], pos[l][0], pos[l][1], col[m], 1)
+            d = value(u[(f,l,m,t)])/totalquantity
+            if d > 0.0:
+                svg.line(pos[f][0], pos[f][1], pos[l][0], pos[l][1], col[m], sz*d)
         
+
+
+for w in ws:
+    (x,y) = pos[w]
+    svg.circle(x,y,r,'white',0)
+    svg.text(x-r/1.5,y+r/2.0,"W")
+
+for s in ss:
+    (x,y) = pos[s]
+    dual = -LP.constraints["Cap" + s + "," + str(t)].pi
+    svg.circle(x,y,r,'white','black', dual)
+    svg.text(x-r/2.0,y+r/2.0,"S")
+    
+for f in fs:
+    (x,y) = pos[f]
+    dual = -LP.constraints["Cap" + f + "," + str(t)].pi
+    svg.circle(x,y,r,'white', 'black', dual)
+    svg.text(x-r/2.0,y+r/2.0,"F")
+    
+for l in ls:
+    (x,y) = pos[l]
+    dual = -LP.constraints["Total" + l].pi
+    svg.circle(x,y,r,'white', 'black', dual)
+    svg.text(x-r/2.0,y+r/2.0, "L")
+
 
 svg.close()
 
