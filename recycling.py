@@ -1,106 +1,130 @@
+# Recycling optimization
+
 from pulp import *
-from math import sqrt
+from model1 import *
 
-# Model
+# ---------- The LP ---------- 
+# ---------- Variables ---------- 
 
-def source(x, y, q, r, i, c, l):
-    return { 'pos': (x,y), 'quantity' : q, 'r' : r, 'i' : i, 'c' : c, 'l' : l }
+# q is unsorted flow from waste sources to sorting facilities and landfills
+qpaths = [ (w,s,t) for w in ws.keys() for s in ss.keys() for t in ts ] + \
+         [ (w,l,t) for w in ws.keys() for l in ls.keys() for t in ts ]
+q = LpVariable.dicts('q', qpaths, 0)
 
-def incinerator(x, y, cap):
-    return { 'type' : 'i', 'pos' : (x, y), 'capacity' : cap }
-def compostation(x, y, cap):
-    return { 'type' : 'c', 'pos' : (x, y), 'capacity' : cap }
-def recycling(x, y, cap):
-    return { 'type' : 'r', 'pos' : (x, y), 'capacity' : cap }
-def landfill(x, y, cap):
-    return { 'type' : 'l', 'pos' : (x, y), 'capacity' : cap }
+# u is sorted flow from (s|f) to (f|l), excluding loops f->f
+upaths = [ (s,l,m,t)  for s in ss.keys() for l in ls.keys() for m in ms for t in ts ] + \
+         [ (s,f,m,t)  for s in ss.keys() for f in fs.keys() for m in ms for t in ts ] + \
+         [ (f,l,m,t)  for f in fs.keys() for l in ls.keys() for m in ms for t in ts ] + \
+         [ (f,f2,m,t) for f in fs.keys() for f2 in fs.keys() if f!=f2 for m in ms for t in ts ]
 
-types = 'ricl'
-    
-# Waste sources
-sources = [
-    source(2, 2, 100, 0.8, 0.0, 0.0, 0.2),
-    source(2, 8, 200, 0.0, 0.5, 0.5, 0.0)
-]
+u = LpVariable.dicts('u', upaths, 0)
 
-# Facilities
-facs = [
-    incinerator(0, 5, 60),
-    recycling(6, 11, 50),
-    landfill(6, 2, 200),
-    landfill(4, 8, 80)
-]
-
-# Distance
-def dist(a,b):
-    (xa,ya) = a['pos']
-    (xb,yb) = b['pos']
-    return sqrt((xa-xb)**2.0 + (ya-yb)**2.0)
-
-# Transportation cost/unit
-transportCosts = 0.25
-argmin = -1000.0
-
-# revenues['st'] = revenue of processing a unit of type 's' at facility 't'
-revenues = { 'rr' : 5.0,    'ri' : 1.5,    'rc' : argmin, 'rl' : 0.0,
-             'ir' : argmin, 'ii' : 2.0,    'ic' : argmin, 'il' : 0.0,
-             'cr' : argmin, 'ci' : argmin, 'cc' : 1.0,    'cl' : 0.0,
-             'lr' : argmin, 'li' : argmin, 'lc' : argmin, 'll' : 0.0 }
-             
-# Revenue of processing type t at given facility 
-def revenue(fac, t):
-    return revenues[t + fac['type']] 
-    
-# Cost for processing a unit of waste of type t from source at a given facility
-# including transportation cost minus revenue
-def unitcost(src, fac, t):
-    return dist(src, fac) * transportCosts - revenue(fac, t)
-
-# ----------------  LP formulation ----------------
-
+# ---------- Objective function ---------- 
 LP = LpProblem("Recycling", LpMinimize)
 
-ways = [ (isrc, ifac, t) 
-         for isrc in range(len(sources)) 
-         for ifac in range(len(facs))
-         for t in types ]
+# Transportation costs
+transportationCosts = sum(( cq(*qpath)*q[qpath] for qpath in qpaths )) + sum(( cu(*upath)*u[upath] for upath in upaths ))
 
-# Decision variables for the amount of waste of type t transported on each way, continuous and nonnegative
-ws = LpVariable.dicts('w', ways, 0)
+# Facility costs and revenues
+# Generate costs at facilities
+def facilityCosts():
+    for t in ts:
+        for f in fs.keys():
+            for s in ss.keys():
+                uvec = { m : u[(s,f,m,t)] for m in ms }
+                yield fs[f]['costs'](uvec)
+                
+            for f2 in fs.keys():
+                if f != f2:
+                    uvec = { m : u[(f2,f,m,t)] for m in ms }
+                    yield fs[f]['costs'](uvec)
 
-# Set upper bounds. We can at most transport the amount of type t waste produced at the source
-for w in ways:
-    (isrc, ifac, t) = w
-    ws[w].upBound = sources[isrc]['quantity'] * sources[isrc][t]
+# Generate costs at sorting facilities
+def sortingCosts():
+    for t in ts:
+        for s in ss.keys():
+            for w in ws.keys():
+                yield ss[s]['costs'] * q[(w,s,t)]
 
-# Summands of objective function
-def costs():
-    for way in ways:
-        (isrc, ifac, t) = way
-        yield unitcost(sources[isrc], facs[ifac], t) * ws[way]
+# Generate costs at landfills
+def landfillCosts():
+    for t in ts:
+        for l in ls.keys():
+            for w in ws.keys():
+                yield ls[l]['costs'] * q[(w,l,t)]
 
-# Add objective function to LP
-Z = sum(costs())
+            for s in ss.keys():
+                yield ls[l]['costs'] * sum(( u[(s,l,m,t)] for m in ms ))
+
+            for f in fs.keys():
+                yield ls[l]['costs'] * sum(( u[(f,l,m,t)] for m in ms ))
+
+Z = transportationCosts  + \
+    sum(facilityCosts()) + \
+    sum(sortingCosts())  + \
+    sum(landfillCosts())
+
 LP += Z
 
-# ---------------- Constraints ----------------
+# ---------- Constraints ----------
 
-# All waste has to be removed from the sources
-def balanceConstraints():
-    for isrc in range(len(sources)):
-        yield sum(( ws[(isrc, ifac, t)] for ifac in range(len(facs)) for t in types )) == sources[isrc]['quantity']
+# Mass-balance constraints
+for t in ts:
 
+    # At waste sources
+    for w in ws.keys():
+        LP += sum(( q[(w,s,t)] for s in ss.keys() )) + sum(( q[(w,l,t)] for l in ls.keys() )) == ws[w]['quantity']
 
-# Total waste at facilities may not exceed capacity
-def capacityConstraints():
-    for ifac in range(len(facs)):
-        yield sum(( ws[(isrc, ifac, t)] for isrc in range(len(sources)) for t in types )) <= facs[ifac]['capacity']
+    # At sorting facilities
+    for s in ss.keys():
+        for m in ms:
+            LP += sum(( q[(w,s,t)]*ws[w][m] for w in ws.keys() )) == sum(( u[(s,f,m,t)] for f in fs.keys() )) + \
+                                                                     sum(( u[(s,l,m,t)] for l in ls.keys() ))
 
-# Add constraints to the LP
-for eq in balanceConstraints():
-    LP += eq
-for eq in capacityConstraints():
-    LP += eq
+    # At facilities
+    for f in fs.keys():
+        def inflow(m):
+            return sum(( u[(s,f,m,t)] for s in ss.keys() )) + sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f ))
+        def outflow(m):
+            return sum(( u[(f,l,m,t)] for l in ls.keys() )) + sum(( u[(f,f2,m,t)] for f2 in fs.keys() if f2 != f ))
+
+        uinflow    = { m : inflow(m) for m in ms }
+        uprocessed = fs[f]['processing'](uinflow)
+        for m in ms:
+            LP += uprocessed[m] == outflow(m)
+            
+# Capacity constriants
+for t in ts:
+
+    # At sorting facilities
+    for s in ss.keys():
+        LP += sum(( q[(w,s,t)] for w in ws.keys() )) <= ss[s]['capacity']
+
+    # At facilities
+    for f in fs.keys():
+        LP += sum(( u[(s,f,m,t)] for s in ss.keys() for m in ms )) + \
+              sum(( u[(f2,f,m,t)] for f2 in fs.keys() if f2 != f for m in ms )) <= fs[f]['capacity']
+
+# At landfills
+for l in ls.keys():
+    accum = sum(( q[(w,l,t)] for w in ws.keys() for t in ts )) + \
+            sum(( u[(s,l,m,t)] for s in ss.keys() for m in ms for t in ts )) + \
+            sum(( u[(f,l,m,t)] for f in fs.keys() for m in ms for t in ts ))
+    LP += accum <= ls[l]['total']
+    
+        
+# Don't send illegal stuff to facilities
+LP += sum(( u[(s,f,m,t)]  for f in fs.keys() for t in ts for s in ss.keys()
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0
+LP += sum(( u[(f2,f,m,t)] for f in fs.keys() for t in ts for f2 in fs.keys() if f2 != f
+                          for m in ms if m not in fs[f]['legal'] )) == 0.0
+          
+# Unsorted parts from sorting facilities may not go anywhere but to landfills
+LP += sum(( u[(s,f,m,t)] for s in ss.keys() for f in fs.keys()
+            for t in ts for m in ms if m not in ss[s]['materials'] )) == 0.0
+
+# Note that even though unsorted waste gets deposited on landfills in a distinguished manner,
+# we don't care as it doesn't make any difference
 
 # ---------------- Solve ----------------
 
@@ -112,5 +136,4 @@ print("Optimale Kosten: %f" % value(LP.objective))
 for v in LP.variables():
     if(value(v) > 0.0):
         print("%s = %f" % (v.name, value(v)))
-
 
