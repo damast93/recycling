@@ -13,12 +13,15 @@ class SVG:
     def writeln(self, s, *args):
         self.fo.write((s % args) + "\n")
 
-    def circle(self, x,y, r, col):
-        self.writeln('<circle cx="%f" cy="%f" r="%f" fill="%s"/>', x, y, r, col)
+    def circle(self, x,y, r, fill):
+        self.writeln('<circle cx="%f" cy="%f" r="%f" stroke="black" fill="%s"/>', x, y, r, fill)
 
     def line(self, x1, y1, x2, y2, col, width):
         self.writeln('<line x1="%f" y1="%f" x2="%f" y2="%f" stroke="%s" stroke-width="%i"/>',
-                     x1, y1, x2, y1, col, width)
-
+                     x1, y1, x2, y2, col, width)
+                     
+    def dashline(self, x1, y1, x2, y2, col, width):
+        self.writeln('<line x1="%f" y1="%f" x2="%f" y2="%f" stroke="%s" stroke-width="%i" stroke-dasharray="2,3"/>',
+                     x1, y1, x2, y2, col, width)
 
         

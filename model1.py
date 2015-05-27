@@ -19,7 +19,7 @@ ss = { 'S1' : sorting(100, 1, 'pg'),
 fs = { 'F1' : incinerator(210) }
 
 # Landfills
-ls = { 'L1' : landfill(200, 30),
+ls = { 'L1' : landfill(200, 10),
        'L2' : landfill(2000, 25)}
 
 
