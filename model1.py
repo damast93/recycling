@@ -5,34 +5,37 @@ from recyclingModel import *
 from math import sqrt
 
 # Time
-ts = [ 0, 1, 2, 3, 4, 5 ]
+ts = [ 0 ]
 
 # Waste sources
-ws = { 'W1' : wastesource(200, 0.8, 0.0, 0.0, 0.2),
-       'W2' : wastesource(100, 0.0, 0.0, 0.5, 0.5) }
+ws = { 'W1' : wastesource(50000, 0.1, 0.8, 0.1, 0.0),
+       'W2' : wastesource(10000, 0.5, 0.4, 0.0, 0.1),
+       'W3' : wastesource(40000, 0.1, 0.0, 0.7, 0.2) }
 
 # Sorting facilities
-ss = { 'S1' : sorting(200, 1, 'pg'),
-       'S2' : sorting(100, 2, 'pgb') }
+ss = { 'S1' : sorting(50000, 20, 'pg'),
+       'S2' : sorting(20000, 40, 'pgb') }
 
 # Facilities
-fs = { 'F1' : incinerator(200) }
+fs = { 'F1' : incinerator(15000),
+       'F2' : incinerator(20000) }
 
 # Landfills
-ls = { 'L1' : landfill(300, 10),
-       'L2' : landfill(2000, 25)}
-
+ls = { 'L1' : landfill(100000, 50),
+       'L2' : landfill(200000, 50) }
 
 # ---------- Distance and cost functions ----------
 
-# Ad-hoc euclidean distance
-pos = { 'W1' : (20.0, 20.0), 'W2' : (210.0, 140.0) ,
-        'S1' : (50, 100), 'S2' : (100,10) ,
-        'F1' : (140, 120),
-        'L1' : (200,50), 'L2' : (100,50) }
+# 2D positions for the facilities
+pos = { 'W1' : (15, 8), 'W2' : (70, 40), 'W3' : (12,70),
+        'S1' : (40,20), 'S2' : (25,50) ,
+        'F1' : (25,5), 'F2' : (50,60),
+        'L1' : (10,25), 'L2' : (80,80) }
 
+ckm = 2
+        
 def cq(w,sl,t):
-    return 0.005*sqrt((pos[w][0]-pos[sl][0])**2.0 + (pos[w][1]-pos[sl][1])**2.0)
+    return ckm*sqrt((pos[w][0]-pos[sl][0])**2.0 + (pos[w][1]-pos[sl][1])**2.0)
 
 def cu(sf,fl,m,t):
-    return 0.005*sqrt((pos[sf][0]-pos[fl][0])**2.0 + (pos[sf][1]-pos[fl][1])**2.0)
+    return ckm*sqrt((pos[sf][0]-pos[fl][0])**2.0 + (pos[sf][1]-pos[fl][1])**2.0)

@@ -32,7 +32,7 @@ def incinerator(cap):
         return ret
         
     def costs(u):
-        return -1.0*u['p'] - 0.5*u['b'] 
+        return 100.0*u['p'] + 170.0*u['b'] 
     
     return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'pb' }
 

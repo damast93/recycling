@@ -156,8 +156,8 @@ for t in ts:
     svg = SVG("model%i.svg" % t)
 
     totalquantity = sum(( ws[w]['quantity'] for w in ws ))
-    sz = 3.0
-    r = 10
+    sz = 0.1
+    r = 2
 
     for w in ws:
         for s in ss:
@@ -201,30 +201,27 @@ for t in ts:
 
     for w in ws:
         (x,y) = pos[w]
-        svg.circle(x,y,r,'white',0)
-        svg.text(x-r/1.5,y+r/2.0,"W")
+        svg.circle(x,y,r,'white','white', 0)
+        svg.text(x-r/2.0,y+r/2.0, "W", 2*r, 'black')
 
     for s in ss:
         (x,y) = pos[s]
         dual = LP.constraints["Cap" + s + "," + str(t)].pi
         if not (dual is None):
-            svg.circle(x,y,r,'white','black', -dual)
-        svg.text(x-r/2.0,y+r/2.0,"S")
+            w = 0.1
+            svg.square(x,y,r,'white', 'black', sz)
+        #svg.text(x-r/2.0,y+r/2.0,"S")
         
     for f in fs:
         (x,y) = pos[f]
         dual = LP.constraints["Cap" + f + "," + str(t)].pi
         if not (dual is None):
-            svg.circle(x,y,r,'white', 'black', -dual)
-        svg.text(x-r/2.0,y+r/2.0,"F")
+            svg.roundsquare(x,y,r,'white', 'black', sz)
+        #svg.text(x-r/2.0,y+r/2.0,"F")
         
     for l in ls:
         (x,y) = pos[l]
-        dual = LP.constraints["Total" + l].pi
-        if not (dual is None):
-            svg.circle(x,y,r,'white', 'black', -dual)
-        svg.text(x-r/2.0,y+r/2.0, "L")
-
+        svg.circle(x,y,r,'white','black', sz)
 
     svg.close()
 
