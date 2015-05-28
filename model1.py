@@ -13,19 +13,19 @@ ws = { 'W1' : wastesource(40000, 0.2, 0.7, 0.1, 0.0),
        'W3' : wastesource(30000, 0.2, 0.0, 0.7, 0.1) }
 
 # Sorting facilities
-ss = { 'S1' : sorting(50000, 30, 'pgb'), # vs 20/35
-       'S2' : sorting(30000, 25, 'pb') } # vs 30000
+ss = { 'S1' : sorting(20000, 30, 'pgb'), # vs 20/40
+       'S2' : sorting(30000, 25, 'pb') } # 30000
 
 # Facilities
 fs = { 'I1' : incinerator(15000),
        'I2' : incinerator(20000),
        'C' : compostation(20000),
        'P' : plasticrecycling(15000), # 15 vs 20
-       'G' : glassrecycling(40000) } # 20 vs 40
+       'G' : glassrecycling(20000) } # 20 vs 40
 
 # Landfills
 ls = { 'L1' : landfill( 40000, 50),
-       'L2' : landfill(350000, 70) }
+       'L2' : landfill(500000, 70) }
 
 # ---------- Distance and cost functions ----------
 
