@@ -27,15 +27,50 @@ def sorting(cap, costs, materials):
 # Create an incinerator of given capacity
 def incinerator(cap):
     def processing(u):
-        ret = u0
-        ret['l'] = 0.1*u['p'] + 0.05*u['b']
+        ret = u0.copy()
+        ret['l'] = 0.1*u['p'] + 0.05*u['b'] + u['g'] + u['l']
         return ret
         
     def costs(u):
-        return 100.0*u['p'] + 170.0*u['b'] 
+        return 40.0*u['p'] + 70.0*u['b'] + 100.0*u['g'] + 100.0*u['l']
     
-    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'pb' }
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'pbgl' }
 
+# Create a glass recycling facility of given capacity
+def glassrecycling(cap):
+    def processing(u):
+        ret = u0.copy()
+        ret['l'] = 0.05*u['g']
+        return ret
+        
+    def costs(u):
+        return -250.0*u['g']
+    
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'g' }
+
+# Create a compostation facility of given capacity
+def compostation(cap):
+    def processing(u):
+        ret = u0.copy()
+        return ret
+        
+    def costs(u):
+        return 50*u['b']
+    
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'b' }
+
+# Create a plastic recycling facility of given capacity
+def plasticrecycling(cap):
+    def processing(u):
+        ret = u0.copy()
+        ret['l'] = 0.05*u['p']
+        return ret
+        
+    def costs(u):
+        return -400*u['p']
+    
+    return { 'capacity' : cap, 'processing' : processing, 'costs' : costs, 'legal' : 'p' }
+    
 # ---------- Landfills ----------
 # Create landfill with given total capacity and depositing costs
 def landfill(total, costs):

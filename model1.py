@@ -5,34 +5,37 @@ from recyclingModel import *
 from math import sqrt
 
 # Time
-ts = [ 0 ]
+ts = [ 0, 1, 2, 3, 4 ]
 
 # Waste sources
-ws = { 'W1' : wastesource(50000, 0.1, 0.8, 0.1, 0.0),
-       'W2' : wastesource(10000, 0.5, 0.4, 0.0, 0.1),
-       'W3' : wastesource(40000, 0.1, 0.0, 0.7, 0.2) }
+ws = { 'W1' : wastesource(40000, 0.2, 0.7, 0.1, 0.0),
+       'W2' : wastesource(30000, 0.5, 0.4, 0.0, 0.1),
+       'W3' : wastesource(30000, 0.2, 0.0, 0.7, 0.1) }
 
 # Sorting facilities
-ss = { 'S1' : sorting(50000, 20, 'pg'),
-       'S2' : sorting(20000, 40, 'pgb') }
+ss = { 'S1' : sorting(50000, 30, 'pgb'), # vs 20/35
+       'S2' : sorting(30000, 25, 'pb') } # vs 30000
 
 # Facilities
-fs = { 'F1' : incinerator(15000),
-       'F2' : incinerator(20000) }
+fs = { 'I1' : incinerator(15000),
+       'I2' : incinerator(20000),
+       'C' : compostation(20000),
+       'P' : plasticrecycling(15000), # 15 vs 20
+       'G' : glassrecycling(40000) } # 20 vs 40
 
 # Landfills
-ls = { 'L1' : landfill(100000, 50),
-       'L2' : landfill(200000, 50) }
+ls = { 'L1' : landfill( 40000, 50),
+       'L2' : landfill(350000, 70) }
 
 # ---------- Distance and cost functions ----------
 
 # 2D positions for the facilities
-pos = { 'W1' : (15, 8), 'W2' : (70, 40), 'W3' : (12,70),
-        'S1' : (40,20), 'S2' : (25,50) ,
-        'F1' : (25,5), 'F2' : (50,60),
-        'L1' : (10,25), 'L2' : (80,80) }
+pos = { 'W1' : (25, 8), 'W2' : (80, 40), 'W3' : (22,70),
+        'S1' : (37,32), 'S2' : (32,54) ,
+        'I1' : (45,22), 'I2' : (60,60), 'C' : (40,40), 'P' : (20, 54), 'G' : (70,30),
+        'L1' : (10,15), 'L2' : (80,80) }
 
-ckm = 2
+ckm = 2.5
         
 def cq(w,sl,t):
     return ckm*sqrt((pos[w][0]-pos[sl][0])**2.0 + (pos[w][1]-pos[sl][1])**2.0)

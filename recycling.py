@@ -116,11 +116,11 @@ for t in ts:
               "Cap" + f + "," + str(t)
 
 # At landfills (accumulating over time)
+accum = lambda l, ts : sum(( q[(w,l,t)]   for w in ws for t in ts )) + \
+                         sum(( u[(s,l,m,t)] for s in ss for m in ms for t in ts )) + \
+                         sum(( u[(f,l,m,t)] for f in fs for m in ms for t in ts ))
 for l in ls:
-    accum = sum(( q[(w,l,t)]   for w in ws for t in ts )) + \
-            sum(( u[(s,l,m,t)] for s in ss for m in ms for t in ts )) + \
-            sum(( u[(f,l,m,t)] for f in fs for m in ms for t in ts ))
-    LP += accum <= ls[l]['total'], \
+    LP += accum(l, ts) <= ls[l]['total'], \
           "Total" + l
     
         
@@ -149,7 +149,7 @@ print("Optimal costs: %f" % value(LP.objective))
 
 # Graphics output
 # Colors for materials
-col = { 'p' : 'yellow', 'g' : 'gray', 'b' : 'green', 'l' : 'navy' }
+col = { 'p' : 'red', 'g' : 'gray', 'b' : 'green', 'l' : 'navy' }
 
 for t in ts: 
 
@@ -157,31 +157,32 @@ for t in ts:
 
     totalquantity = sum(( ws[w]['quantity'] for w in ws ))
     sz = 0.1
+    lw = 25.0
     r = 2
 
     for w in ws:
         for s in ss:
             d = value(q[(w,s,t)])/totalquantity
             if d > 0.0:
-                svg.line(pos[w][0], pos[w][1],pos[s][0],pos[s][1], 'black', sz*d)
+                svg.line(pos[w][0], pos[w][1],pos[s][0],pos[s][1], 'black', lw*sz*d)
             
         for l in ls:
             d = value(q[(w,l,t)])/totalquantity
             if d > 0.0:
-                svg.line(pos[w][0], pos[w][1],pos[l][0],pos[l][1], 'black', sz*d)
+                svg.line(pos[w][0], pos[w][1],pos[l][0],pos[l][1], 'black', lw*sz*d)
         
     for s in ss:
         for f in fs:
             for m in ms:
                 d = value(u[(s,f,m,t)])/totalquantity
                 if d > 0.0:
-                    svg.line(pos[s][0], pos[s][1], pos[f][0], pos[f][1], col[m], sz*d)
+                    svg.line(pos[s][0], pos[s][1], pos[f][0], pos[f][1], col[m], lw*sz*d)
                     
         for l in ls:
             for m in ms:
                 d = value(u[(s,l,m,t)])/totalquantity
                 if d > 0.0:
-                    svg.line(pos[s][0], pos[s][1], pos[l][0], pos[l][1], col[m], sz*d)
+                    svg.line(pos[s][0], pos[s][1], pos[l][0], pos[l][1], col[m], lw*sz*d)
 
     for f in fs:
         for f2 in fs:
@@ -189,13 +190,13 @@ for t in ts:
                 for m in ms:
                     d = value(u[(f,f2,m,t)])/totalquantity
                     if d > 0.0:
-                        svg.line(pos[f][0], pos[f][1], pos[f2][0], pos[f2][1], col[m], sz*d)
+                        svg.line(pos[f][0], pos[f][1], pos[f2][0], pos[f2][1], col[m], lw*sz*d)
 
         for l in ls:
             for m in ms:
                 d = value(u[(f,l,m,t)])/totalquantity
                 if d > 0.0:
-                    svg.line(pos[f][0], pos[f][1], pos[l][0], pos[l][1], col[m], sz*d)
+                    svg.line(pos[f][0], pos[f][1], pos[l][0], pos[l][1], col[m], lw*sz*d)
             
 
 
@@ -208,21 +209,30 @@ for t in ts:
         (x,y) = pos[s]
         dual = LP.constraints["Cap" + s + "," + str(t)].pi
         if not (dual is None):
-            w = 0.1
-            svg.square(x,y,r,'white', 'black', sz)
-        #svg.text(x-r/2.0,y+r/2.0,"S")
+            w = -sz*dual/50.0
+            if w < sz:
+                svg.square(x,y,r,'white', 'black', sz, s)
+            else:
+                
+                svg.square(x,y,r,'white', 'black', w, s)
         
     for f in fs:
         (x,y) = pos[f]
         dual = LP.constraints["Cap" + f + "," + str(t)].pi
         if not (dual is None):
-            svg.roundsquare(x,y,r,'white', 'black', sz)
-        #svg.text(x-r/2.0,y+r/2.0,"F")
+            w = -sz*dual/50.0
+            if w > sz:
+                svg.roundsquare(x,y,r,'white', 'black', w, f)
+                continue
+        svg.roundsquare(x,y,r,'white', 'black', sz, f)
         
     for l in ls:
         (x,y) = pos[l]
-        svg.circle(x,y,r,'white','black', sz)
+        perc = int(255 - 255*value(accum(l, range(0, t+1)))/ls[l]['total'])
+        svg.circle(x,y,r,'rgb(%i, %i, %i)' % (perc, perc, perc),'black', sz)
 
+
+    svg.text(100, 50, "Total cost: $%s / a" % "{:,}".format(int(value(Z)/len(ts))), 6)
     svg.close()
 
 if 1:
@@ -230,7 +240,7 @@ if 1:
         if(value(v) > 0.0):
             print("%s = %f" % (v.name, value(v)))
 
-
     # Dual variables
     for c in LP.constraints:
-        print("%s = %s" % (c, str(LP.constraints[c].pi)))
+        if c.startswith("Cap"):
+            print("%s = %s" % (c, str(LP.constraints[c].pi)))
